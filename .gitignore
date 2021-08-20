@@ -8,6 +8,9 @@
 *.dat
 *.csv
 
+#vscode stuff
+.vscode 
+
 # Emacs temp files
 .#*
 
