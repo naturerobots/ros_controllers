@@ -71,14 +71,11 @@ namespace swerve_steering_controller
 
   bool Odometry::update(std::vector<double> wheels_omega, std::vector<double> holders_theta, const ros::Time &time, std::array<double,2>* intersection_point)
   {
-    double theta1,m1,b1,theta,m,b;
-    std::vector<std::array<double,2>> intersections;
-
-    for (size_t i=0; i<wheels_num_-1; ++i)
+    for (size_t i=0; i<wheels_num_; ++i)
     {
       //setting thetas and omegas to zeros when they're close to it becuase the omega sign fluctuations make the readings unstable
       //maybe those thersholds should be user-configured?
-      if(utils::isclose(wheels_omega[i],0,0.01))
+      if(utils::isclose(wheels_omega[i],0,0.02))
       {
         wheels_omega[i] = 0.0;
       }
@@ -89,12 +86,14 @@ namespace swerve_steering_controller
       
       if (wheels_omega[i]<0)
       {
-            theta = utils::theta_map(holders_theta[i]+M_PI);
+            holders_theta[i] = utils::theta_map(holders_theta[i]+M_PI);
             wheels_omega[i] = -wheels_omega[i];
       }
     }
 
     //intersection point 
+    double theta1,m1,b1,theta,m,b;
+    std::vector<std::array<double,2>> intersections;
     for (size_t j=0; j<wheels_num_-1; ++j)
     {
       theta1 = utils::theta_map(holders_theta[j]+M_PI_2);
@@ -151,6 +150,8 @@ namespace swerve_steering_controller
       {
         linear_x_vh += ( wheels_omega[i]*wheels_radii_[i]*cos(holders_theta[i]) ) / wheels_num_;
         linear_y_vh += ( wheels_omega[i]*wheels_radii_[i]*sin(holders_theta[i]) ) / wheels_num_;
+        intersection_point->at(0) = INFINITY; //just to visualize it on rqt_plot through the publisher
+        intersection_point->at(1) = INFINITY; //just to visualize it on rqt_plot through the publisher
       }
     }
     else
@@ -160,9 +161,13 @@ namespace swerve_steering_controller
         if((fabs(intersections[i][0]-intersections[i-1][0])>intersection_tol_ || fabs(intersections[i][1]-intersections[i-1][1])>intersection_tol_) && i!=0)
         {
           ROS_ERROR_STREAM("intersections are not close enough to get an average, dropping!");
+          for (size_t i=0; i<wheels_num_; ++i)
+          {
+            ROS_WARN_STREAM("theta, omega: "<<holders_theta[i]<<" "<<wheels_omega[i]);
+          }
           for (size_t i=0; i<intersections.size(); ++i)
           {
-            ROS_WARN_STREAM("intersection "<<intersections[i][0]<<" "<<intersections[i][1]<<std::endl);
+            ROS_WARN_STREAM("intersection i:"<<i<<" , "<<intersections[i][0]<<"  "<<intersections[i][1]);
           }
           return false;
         }
@@ -188,10 +193,10 @@ namespace swerve_steering_controller
         if (utils::isclose(icr_wh[0],0)||utils::isclose(icr_wh[1],0))
             ROS_WARN_STREAM("icr_wh for wheel "<< i <<" is zero. icr is just over it!");
 
-        angular = (wheels_omega[i]*wheels_radii_[i]*sin(holders_theta[i]))/(2*icr_wh[0]) - (wheels_omega[i]*wheels_radii_[i]*cos(holders_theta[i]))/(2*icr_wh[1]);
+        angular += (wheels_omega[i]*wheels_radii_[i]*sin(holders_theta[i]))/(2*icr_wh[0]) - (wheels_omega[i]*wheels_radii_[i]*cos(holders_theta[i]))/(2*icr_wh[1]);
         // if (isinf(angular)) ROS_WARN_STREAM("angular is the problem");
       }
-      // angular/=wheels_num_; //for some reason it works like this
+      angular/=wheels_num_; 
       linear_x_vh =      average_intersection[1] * angular;
       linear_y_vh = -1 * average_intersection[0] * angular;
     }

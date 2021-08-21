@@ -162,7 +162,7 @@ namespace swerve_steering_controller
       ROS_INFO_STREAM_NAMED(name_, "Controller state will be published at " << publish_rate << "Hz.");
       publish_period_ = ros::Duration(1.0 / publish_rate);
 
-      int velocity_rolling_window_size = 10;
+      int velocity_rolling_window_size = 4;
       controller_nh.param("velocity_rolling_window_size", velocity_rolling_window_size, velocity_rolling_window_size);
       ROS_INFO_STREAM_NAMED(name_, "Velocity rolling window size of "
                             << velocity_rolling_window_size << ".");
