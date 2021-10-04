@@ -9,8 +9,7 @@ endif()
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-    Boost REQUIRED
-    roscpp REQUIRED
+    roscpp
     controller_interface
     control_msgs
     geometry_msgs
@@ -21,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
     tf
     urdf
 )
+find_package(Boost REQUIRED)
 
 catkin_package(
   INCLUDE_DIRS include
@@ -98,7 +98,7 @@ if(CATKIN_ENABLE_TESTING)
   find_package(std_srvs REQUIRED)
   find_package(rosgraph_msgs REQUIRED)
   find_package(rostest REQUIRED)
-  
+
   include_directories(
     ${controller_manager_INCLUDE_DIRS}
     ${geometry_msgs_INCLUDE_DIRS}
