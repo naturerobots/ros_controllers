@@ -191,3 +191,8 @@ void wheel::set_limitless(const bool limitless)
 {
     this->limitless_ = limitless;
 }
+
+int wheel::get_omega_direction() const
+{
+    return omega_direc_;
+}

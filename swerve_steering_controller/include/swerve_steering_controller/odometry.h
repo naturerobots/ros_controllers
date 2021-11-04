@@ -61,7 +61,7 @@ namespace swerve_steering_controller
 
         void init(const ros::Time &time, double infinity_tolerance, double intersection_tolerance);
 
-        bool update(std::vector<double> wheels_omega, std::vector<double> holders_theta, const ros::Time &time, std::array<double,2>* intersection_point);
+        bool update(std::vector<double> wheels_omega, std::vector<double> holders_theta, std::vector<int> directions, const ros::Time &time, std::array<double,2>* intersection_point);
 
         double getHeading() const
         {

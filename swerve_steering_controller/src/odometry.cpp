@@ -69,25 +69,14 @@ namespace swerve_steering_controller
     timestamp_ = time;
   }
 
-  bool Odometry::update(std::vector<double> wheels_omega, std::vector<double> holders_theta, const ros::Time &time, std::array<double,2>* intersection_point)
+  bool Odometry::update(std::vector<double> wheels_omega, std::vector<double> holders_theta, std::vector<int> directions, const ros::Time &time, std::array<double,2>* intersection_point)
   {
     for (size_t i=0; i<wheels_num_; ++i)
     {
-      //setting thetas and omegas to zeros when they're close to it becuase the omega sign fluctuations make the readings unstable
-      //maybe those thersholds should be user-configured?
-      if(utils::isclose(wheels_omega[i],0,0.02))
-      {
-        wheels_omega[i] = 0.0;
-      }
-      if(utils::isclose(holders_theta[i],0,0.0001))
-      {
-        holders_theta[i] = 0.0;
-      }
-      
-      if (wheels_omega[i]<0)
-      {
+      wheels_omega[i] = fabs(wheels_omega[i]);
+      if (directions[i]<0) // i think this will make a problem when actual omega is too +ve big and the command omega is -ve 
+      {                    // as it will take time to reverse and signal will be wrong all this
             holders_theta[i] = utils::theta_map(holders_theta[i]+M_PI);
-            wheels_omega[i] = -wheels_omega[i];
       }
     }
 
@@ -253,7 +242,7 @@ namespace swerve_steering_controller
     timestamp_ = time;
 
     /// Integrate odometry:
-    integrate_fun_(linear_x,linear_y, angular,dt);
+    integrate_fun_(linear_x_,linear_y_, angular_,dt);
 
 
     /// Estimate speeds using a rolling mean to filter them out:

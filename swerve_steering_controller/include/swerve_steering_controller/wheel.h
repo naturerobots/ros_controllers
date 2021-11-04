@@ -70,6 +70,7 @@ class wheel
         void set_limitless(const bool limitless);
         bool get_limitless() const;
 
+        int get_omega_direction() const;
         //for the controller use only. THis class wont use them by itself
         double offset;
         double radius;

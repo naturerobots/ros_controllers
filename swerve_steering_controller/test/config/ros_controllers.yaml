@@ -21,7 +21,7 @@ swerve_steering_controller:
   radii:   [0.075, 0.075, 0.075, 0.075] 
   limitless: [false, false, false, false]
   offsets:   [0.0, 0.0, 0.0, 0.0 ]
-  positions: [[0.1,0.1], [0.1,-0.1], [-0.1,-0.1], [-0.1,0.1]]
+  positions: [[-0.1,-0.1], [-0.1,0.1], [0.1,-0.1], [0.1,0.1]]
   limits: [[-3.14,3.14], [-3.14,3.14], [-3.14,3.14], [-3.14,3.14]]
 
   publish_rate: 50
