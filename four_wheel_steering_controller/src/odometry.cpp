@@ -93,12 +93,24 @@ namespace four_wheel_steering_controller
     const double rear_linear_speed = wheel_radius_ * copysign(1.0, rl_speed_tmp+rr_speed_tmp)*
         sqrt((pow(rl_speed_tmp,2)+pow(rr_speed_tmp,2))/(2+pow(steering_track_*rear_tmp,2)/2.0));
 
-    angular_ = (front_linear_speed*front_tmp + rear_linear_speed*rear_tmp)/2.0;
+    bool pivot_mode = false;
 
-    linear_x_ = (front_linear_speed*cos(front_steering) + rear_linear_speed*cos(rear_steering))/2.0;
-    linear_y_ = (front_linear_speed*sin(front_steering) - wheel_base_*angular_/2.0
-                + rear_linear_speed*sin(rear_steering) + wheel_base_*angular_/2.0)/2.0;
-    linear_ =  copysign(1.0, rear_linear_speed)*sqrt(pow(linear_x_,2)+pow(linear_y_,2));
+    if (abs(front_steering) < 1.571 && abs(front_steering) > 1.568 && abs(rear_steering) < 1.571 && abs(rear_steering) > 1.568)
+    {
+      double R = std::sqrt(std::pow(wheel_base_/2,2) + std::pow(steering_track_/2,2)) + wheel_steering_y_offset_;
+      angular_ = -wheel_radius_ * fl_speed / R;
+      linear_x_ = 0.000001;
+      linear_y_ = 0.000001;
+      pivot_mode = true;
+    }
+    else
+    {
+      angular_ = (front_linear_speed * front_tmp + rear_linear_speed * rear_tmp) / 2.0;
+      linear_x_ = (front_linear_speed * cos(front_steering) + rear_linear_speed * cos(rear_steering)) / 2.0;
+      linear_y_ = (front_linear_speed * sin(front_steering) - wheel_base_ * angular_ / 2.0
+                   + rear_linear_speed * sin(rear_steering) + wheel_base_ * angular_ / 2.0) / 2.0;
+      linear_ = copysign(1.0, rear_linear_speed) * sqrt(pow(linear_x_, 2) + pow(linear_y_, 2));
+    }
 
     /// Compute x, y and heading using velocity
     const double dt = (time - last_update_timestamp_).toSec();
@@ -106,8 +118,9 @@ namespace four_wheel_steering_controller
       return false; // Interval too small to integrate with
 
     last_update_timestamp_ = time;
+
     /// Integrate odometry:
-    integrateXY(linear_x_*dt, linear_y_*dt, angular_*dt);
+    integrateXY(linear_x_ * dt, linear_y_ * dt, angular_ * dt, pivot_mode);
 
     linear_accel_acc_((linear_vel_prev_ - linear_)/dt);
     linear_vel_prev_ = linear_;
@@ -135,13 +148,16 @@ namespace four_wheel_steering_controller
     resetAccumulators();
   }
 
-  void Odometry::integrateXY(double linear_x, double linear_y, double angular)
+  void Odometry::integrateXY(double linear_x, double linear_y, double angular, bool pivot_mode)
   {
-    const double delta_x = linear_x*cos(heading_) - linear_y*sin(heading_);
-    const double delta_y = linear_x*sin(heading_) + linear_y*cos(heading_);
+    if (!pivot_mode)
+    {
+      const double delta_x = linear_x*cos(heading_) - linear_y*sin(heading_);
+      const double delta_y = linear_x*sin(heading_) + linear_y*cos(heading_);
+      x_ += delta_x;
+      y_ += delta_y;
+    }
 
-    x_ += delta_x;
-    y_ += delta_y;
     heading_ += angular;
   }
 

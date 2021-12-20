@@ -211,7 +211,7 @@ namespace four_wheel_steering_controller
      * \param linear_y  Linear  velocity along y of the robot frame   [m] (linear  displacement, i.e. m/s * dt) computed by encoders
      * \param angular Angular velocity [rad] (angular displacement, i.e. m/s * dt) computed by encoders
      */
-    void integrateXY(double linear_x, double linear_y, double angular);
+    void integrateXY(double linear_x, double linear_y, double angular, bool pivot_mode);
 
     /**
      * \brief Integrates the velocities (linear and angular) using 2nd order Runge-Kutta
