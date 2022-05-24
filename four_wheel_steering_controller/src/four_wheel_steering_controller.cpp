@@ -430,61 +430,86 @@ void FourWheelSteeringController::updateCommand(const ros::Time& time, const ros
     float front_steering = M_PI_2 - fabs(curr_cmd_4ws.front_steering == 0.0 ? 0.0000001 : curr_cmd_4ws.front_steering);
     float rear_steering = M_PI_2 - fabs(curr_cmd_4ws.rear_steering == 0.0 ? 0.0000001 : curr_cmd_4ws.rear_steering);
 
+    // find center of rotation
     float rotation_center_x = 0;
     float rotation_side = 1;
     if (curr_cmd_4ws.front_steering * curr_cmd_4ws.rear_steering > 0.0)
     {
       rotation_center_x =
-          (wheel_base_ * cos(front_steering) * sin(rear_steering)) / sin(front_steering - rear_steering);
-      if (curr_cmd_4ws.front_steering > curr_cmd_4ws.rear_steering)
-        rotation_side = -1;  // rotation point will be on the right hand side of the robot
+          -(wheel_base_ * cos(front_steering) * sin(rear_steering)) / sin(front_steering - rear_steering);
     }
     else
     {
       rotation_center_x =
           (wheel_base_ * cos(front_steering) * sin(rear_steering)) / sin(front_steering + rear_steering);
-      if (curr_cmd_4ws.front_steering < curr_cmd_4ws.rear_steering)
-        rotation_side = -1;  // rotation point will be on the right hand side of the robot
     }
+    if (curr_cmd_4ws.front_steering < curr_cmd_4ws.rear_steering)
+      rotation_side = -1;  // rotation point will be on the right hand side of the robot
 
     float rotation_center_y = rotation_center_x * tan(front_steering) * rotation_side;
     rotation_center_x = (wheel_base_ / 2) - rotation_center_x;
     ROS_INFO_STREAM("x: " << rotation_center_x << " y: " << rotation_center_y);
 
+    float half_wheel_base = wheel_base_ / 2.0;
+    float half_steering_track = steering_track / 2.0;
+
     // Compute steering angles
+    if (fabs(curr_cmd_4ws.front_steering) + fabs(curr_cmd_4ws.rear_steering) > 0.001)
+    {
+      front_left_steering = -atan((rotation_center_x - half_wheel_base) / (rotation_center_y - half_steering_track));
+      if (rotation_center_x + 0.01 < half_wheel_base && rotation_center_y < half_steering_track &&
+          rotation_center_y > 0.0)
+        front_left_steering += M_PI;
+
+      front_right_steering = -atan((rotation_center_x - half_wheel_base) / (rotation_center_y + half_steering_track));
+      if (rotation_center_x - 0.01 < half_wheel_base && rotation_center_y > -half_steering_track &&
+          rotation_center_y < 0.0)
+        front_right_steering -= M_PI;
+
+      rear_left_steering = -atan((rotation_center_x + half_wheel_base) / (rotation_center_y - half_steering_track));
+      if (rotation_center_x + 0.01 > -half_wheel_base && rotation_center_y < half_steering_track &&
+          rotation_center_y > 0.0)
+        rear_left_steering -= M_PI;
+
+      rear_right_steering = -atan((rotation_center_x + half_wheel_base) / (rotation_center_y + half_steering_track));
+      if (rotation_center_x - 0.01 > -half_wheel_base && rotation_center_y > -half_steering_track &&
+          rotation_center_y < 0.0)
+        rear_right_steering += M_PI;
+    }
+
     const double tan_front_steering = tan(curr_cmd_4ws.front_steering);
     const double tan_rear_steering = tan(curr_cmd_4ws.rear_steering);
 
     const double steering_diff = steering_track * (tan_front_steering - tan_rear_steering) / 2.0;
-    if (fabs(wheel_base_ - fabs(steering_diff)) > 0.001)
-    {
-      front_left_steering = atan(wheel_base_ * tan_front_steering / (wheel_base_ - steering_diff));
-      front_right_steering = atan(wheel_base_ * tan_front_steering / (wheel_base_ + steering_diff));
-      rear_left_steering = atan(wheel_base_ * tan_rear_steering / (wheel_base_ - steering_diff));
-      rear_right_steering = atan(wheel_base_ * tan_rear_steering / (wheel_base_ + steering_diff));
+    // if (fabs(wheel_base_ - fabs(steering_diff)) > 0.001)
+    // {
+    //   front_left_steering = atan(wheel_base_ * tan_front_steering / (wheel_base_ - steering_diff));
+    //   front_right_steering = atan(wheel_base_ * tan_front_steering / (wheel_base_ + steering_diff));
+    //   rear_left_steering = atan(wheel_base_ * tan_rear_steering / (wheel_base_ - steering_diff));
+    //   rear_right_steering = atan(wheel_base_ * tan_rear_steering / (wheel_base_ + steering_diff));
 
-      if (tan_front_steering > 0 && wheel_base_ - steering_diff < 0)
-      {
-        // ROS_INFO_STREAM("fl_rot");
-        front_left_steering += M_PI;
-      }
-      if (tan_front_steering < 0 && wheel_base_ + steering_diff < 0)
-      {
-        // ROS_INFO_STREAM("fr_rot");
-        front_right_steering -= M_PI;
-      }
+    //   if (tan_front_steering > 0 && wheel_base_ - steering_diff < 0)
+    //   {
+    //     // ROS_INFO_STREAM("fl_rot");
+    //     front_left_steering += M_PI;
+    //   }
+    //   if (tan_front_steering < 0 && wheel_base_ + steering_diff < 0)
+    //   {
+    //     // ROS_INFO_STREAM("fr_rot");
+    //     front_right_steering -= M_PI;
+    //   }
 
-      if (tan_rear_steering < 0 && wheel_base_ - steering_diff < 0)
-      {
-        // ROS_INFO_STREAM("rl_rot");
-        rear_left_steering -= M_PI;
-      }
-      if (tan_rear_steering > 0 && wheel_base_ + steering_diff < 0)
-      {
-        // ROS_INFO_STREAM("rr_rot");
-        rear_right_steering += M_PI;
-      }
-    }
+    //   if (tan_rear_steering < 0 && wheel_base_ - steering_diff < 0)
+    //   {
+    //     // ROS_INFO_STREAM("rl_rot");
+    //     rear_left_steering -= M_PI;
+    //   }
+    //   if (tan_rear_steering > 0 && wheel_base_ + steering_diff < 0)
+    //   {
+    //     // ROS_INFO_STREAM("rr_rot");
+    //     rear_right_steering += M_PI;
+    //   }
+    // }
 
     // Compute wheels velocities:
     if (fabs(curr_cmd_4ws.lin) > 0.001)
