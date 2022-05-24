@@ -430,16 +430,18 @@ void FourWheelSteeringController::updateCommand(const ros::Time& time, const ros
     float front_steering = M_PI_2 - fabs(curr_cmd_4ws.front_steering == 0.0 ? 0.0000001 : curr_cmd_4ws.front_steering);
     float rear_steering = M_PI_2 - fabs(curr_cmd_4ws.rear_steering == 0.0 ? 0.0000001 : curr_cmd_4ws.rear_steering);
 
-    // find center of rotation
+    // Find center of rotation
     float rotation_center_x = 0;
     float rotation_side = 1;
     if (curr_cmd_4ws.front_steering * curr_cmd_4ws.rear_steering > 0.0)
     {
-      rotation_center_x =
-          -(wheel_base_ * cos(front_steering) * sin(rear_steering)) / sin(front_steering - rear_steering);
+      // Both steering angles in the same direction
+      // rotation_center_x =
+      //     -(wheel_base_ * cos(front_steering) * sin(rear_steering)) / sin(front_steering - rear_steering);
     }
     else
     {
+      // Front and rear steering angles in different directions
       rotation_center_x =
           (wheel_base_ * cos(front_steering) * sin(rear_steering)) / sin(front_steering + rear_steering);
     }
@@ -457,22 +459,22 @@ void FourWheelSteeringController::updateCommand(const ros::Time& time, const ros
     if (fabs(curr_cmd_4ws.front_steering) + fabs(curr_cmd_4ws.rear_steering) > 0.001)
     {
       front_left_steering = -atan((rotation_center_x - half_wheel_base) / (rotation_center_y - half_steering_track));
-      if (rotation_center_x + 0.01 < half_wheel_base && rotation_center_y < half_steering_track &&
+      if (rotation_center_x - 0.01 < half_wheel_base && rotation_center_y < half_steering_track &&
           rotation_center_y > 0.0)
         front_left_steering += M_PI;
 
       front_right_steering = -atan((rotation_center_x - half_wheel_base) / (rotation_center_y + half_steering_track));
-      if (rotation_center_x - 0.01 < half_wheel_base && rotation_center_y > -half_steering_track &&
+      if (rotation_center_x + 0.01 < half_wheel_base && rotation_center_y > -half_steering_track &&
           rotation_center_y < 0.0)
         front_right_steering -= M_PI;
 
       rear_left_steering = -atan((rotation_center_x + half_wheel_base) / (rotation_center_y - half_steering_track));
-      if (rotation_center_x + 0.01 > -half_wheel_base && rotation_center_y < half_steering_track &&
+      if (rotation_center_x - 0.01 > -half_wheel_base && rotation_center_y < half_steering_track &&
           rotation_center_y > 0.0)
         rear_left_steering -= M_PI;
 
       rear_right_steering = -atan((rotation_center_x + half_wheel_base) / (rotation_center_y + half_steering_track));
-      if (rotation_center_x - 0.01 > -half_wheel_base && rotation_center_y > -half_steering_track &&
+      if (rotation_center_x + 0.01 > -half_wheel_base && rotation_center_y > -half_steering_track &&
           rotation_center_y < 0.0)
         rear_right_steering += M_PI;
     }
@@ -514,44 +516,80 @@ void FourWheelSteeringController::updateCommand(const ros::Time& time, const ros
     // Compute wheels velocities:
     if (fabs(curr_cmd_4ws.lin) > 0.001)
     {
-      // Virutal front and rear wheelbase
-      // distance between the projection of the CIR on the wheelbase and the front axle
-      double l_front = 0;
-      if (fabs(tan(front_left_steering) - tan(front_right_steering)) > 0.01)
-      {
-        l_front = tan(front_right_steering) * tan(front_left_steering) * steering_track /
-                  (tan(front_left_steering) - tan(front_right_steering));
-      }
-      // distance between the projection of the CIR on the wheelbase and the rear axle
-      double l_rear = 0;
-      if (fabs(tan(rear_left_steering) - tan(rear_right_steering)) > 0.01)
-      {
-        l_rear = tan(rear_right_steering) * tan(rear_left_steering) * steering_track /
-                 (tan(rear_left_steering) - tan(rear_right_steering));
-      }
+      float robot_center_rot_radius =
+          sqrt(rotation_center_x * rotation_center_x + rotation_center_y * rotation_center_y);
 
-      const double angular_speed_cmd = curr_cmd_4ws.lin * (tan_front_steering - tan_rear_steering) / wheel_base_;
-      const double vel_steering_offset = (angular_speed_cmd * wheel_steering_y_offset_) / wheel_radius_;
-      const double sign = copysign(1.0, curr_cmd_4ws.lin);
+      float front_left_distance =
+          sqrt((rotation_center_x - half_wheel_base) * (rotation_center_x - half_wheel_base) +
+               (rotation_center_y - half_steering_track) * (rotation_center_y - half_steering_track));
+      float front_right_distance =
+          sqrt((rotation_center_x - half_wheel_base) * (rotation_center_x - half_wheel_base) +
+               (rotation_center_y + half_steering_track) * (rotation_center_y + half_steering_track));
+      float rear_left_distance =
+          sqrt((rotation_center_x + half_wheel_base) * (rotation_center_x + half_wheel_base) +
+               (rotation_center_y - half_steering_track) * (rotation_center_y - half_steering_track));
+      float rear_right_distance =
+          sqrt((rotation_center_x + half_wheel_base) * (rotation_center_x + half_wheel_base) +
+               (rotation_center_y + half_steering_track) * (rotation_center_y + half_steering_track));
 
-      vel_left_front =
-          sign *
-              std::hypot((curr_cmd_4ws.lin - angular_speed_cmd * steering_track / 2), (l_front * angular_speed_cmd)) /
-              wheel_radius_ -
-          vel_steering_offset;
-      vel_right_front =
-          sign *
-              std::hypot((curr_cmd_4ws.lin + angular_speed_cmd * steering_track / 2), (l_front * angular_speed_cmd)) /
-              wheel_radius_ +
-          vel_steering_offset;
-      vel_left_rear =
-          sign * std::hypot((curr_cmd_4ws.lin - angular_speed_cmd * steering_track / 2), (l_rear * angular_speed_cmd)) /
-              wheel_radius_ -
-          vel_steering_offset;
-      vel_right_rear =
-          sign * std::hypot((curr_cmd_4ws.lin + angular_speed_cmd * steering_track / 2), (l_rear * angular_speed_cmd)) /
-              wheel_radius_ +
-          vel_steering_offset;
+      vel_left_front = front_left_distance / robot_center_rot_radius;
+      vel_right_front = front_right_distance / robot_center_rot_radius;
+      vel_left_rear = rear_left_distance / robot_center_rot_radius;
+      vel_right_rear = rear_right_distance / robot_center_rot_radius;
+
+      float vel_sum = vel_left_front + vel_right_front + vel_left_rear + vel_right_rear;
+
+      float vel = (curr_cmd_4ws.lin / (M_2_PI * wheel_radius_));
+
+      vel_left_front *= vel / vel_sum;
+      vel_right_front *= vel / vel_sum;
+      vel_left_rear *= vel / vel_sum;
+      vel_right_rear *= vel / vel_sum;
+
+
+      // // Virutal front and rear wheelbase
+      // // distance between the projection of the CIR on the wheelbase and the front axle
+      // double l_front = 0;
+      // if (fabs(tan(front_left_steering) - tan(front_right_steering)) > 0.01)
+      // {
+      //   l_front = tan(front_right_steering) * tan(front_left_steering) * steering_track /
+      //             (tan(front_left_steering) - tan(front_right_steering));
+      // }
+      // // distance between the projection of the CIR on the wheelbase and the rear axle
+      // double l_rear = 0;
+      // if (fabs(tan(rear_left_steering) - tan(rear_right_steering)) > 0.01)
+      // {
+      //   l_rear = tan(rear_right_steering) * tan(rear_left_steering) * steering_track /
+      //            (tan(rear_left_steering) - tan(rear_right_steering));
+      // }
+
+      // const double angular_speed_cmd = curr_cmd_4ws.lin * (tan_front_steering - tan_rear_steering) / wheel_base_;
+      // const double vel_steering_offset = (angular_speed_cmd * wheel_steering_y_offset_) / wheel_radius_;
+      // const double sign = copysign(1.0, curr_cmd_4ws.lin);
+
+      // vel_left_front =
+      //     sign *
+      //         std::hypot((curr_cmd_4ws.lin - angular_speed_cmd * steering_track / 2), (l_front * angular_speed_cmd))
+      //         / wheel_radius_ -
+      //     vel_steering_offset;
+      // vel_right_front =
+      //     sign *
+      //         std::hypot((curr_cmd_4ws.lin + angular_speed_cmd * steering_track / 2), (l_front * angular_speed_cmd))
+      //         / wheel_radius_ +
+      //     vel_steering_offset;
+      // vel_left_rear =
+      //     sign * std::hypot((curr_cmd_4ws.lin - angular_speed_cmd * steering_track / 2), (l_rear *
+      //     angular_speed_cmd)) /
+      //         wheel_radius_ -
+      //     vel_steering_offset;
+      // vel_right_rear =
+      //     sign * std::hypot((curr_cmd_4ws.lin + angular_speed_cmd * steering_track / 2), (l_rear *
+      //     angular_speed_cmd)) /
+      //         wheel_radius_ +
+      //     vel_steering_offset;
+
+
+      ROS_INFO_STREAM(vel_left_front + vel_right_front + vel_left_rear + vel_right_rear);
     }
   }
 
