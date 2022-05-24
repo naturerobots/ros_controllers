@@ -430,33 +430,26 @@ void FourWheelSteeringController::updateCommand(const ros::Time& time, const ros
     float front_steering = M_PI_2 - fabs(curr_cmd_4ws.front_steering == 0.0 ? 0.0000001 : curr_cmd_4ws.front_steering);
     float rear_steering = M_PI_2 - fabs(curr_cmd_4ws.rear_steering == 0.0 ? 0.0000001 : curr_cmd_4ws.rear_steering);
 
-    // ROS_INFO_STREAM(front_steering << " " << rear_steering);
-
-    // calculate center point of rotation
-    // float c = (wheel_base_ * cos(front_steering) * sin(rear_steering)) / sin(front_steering + rear_steering);
-    // float b = c * tan(front_steering);
-    // if (curr_cmd_4ws.front_steering < curr_cmd_4ws.rear_steering)
-    //   b *= -1; // rotation point will be on the right hand side of the robot
-    // float rotation_center_x = (wheel_base_ / 2.0) - c;
-
-    float c = 0;
-    float b_fac = 1;
+    float rotation_center_x = 0;
+    float rotation_side = 1;
     if (curr_cmd_4ws.front_steering * curr_cmd_4ws.rear_steering > 0.0)
     {
-      c = (wheel_base_ * cos(front_steering) * sin(rear_steering)) / sin(front_steering - rear_steering);
+      rotation_center_x =
+          (wheel_base_ * cos(front_steering) * sin(rear_steering)) / sin(front_steering - rear_steering);
       if (curr_cmd_4ws.front_steering > curr_cmd_4ws.rear_steering)
-        b_fac = -1; // rotation point will be on the right hand side of the robot
+        rotation_side = -1;  // rotation point will be on the right hand side of the robot
     }
     else
     {
-      c = (wheel_base_ * cos(front_steering) * sin(rear_steering)) / sin(front_steering + rear_steering);
+      rotation_center_x =
+          (wheel_base_ * cos(front_steering) * sin(rear_steering)) / sin(front_steering + rear_steering);
       if (curr_cmd_4ws.front_steering < curr_cmd_4ws.rear_steering)
-        b_fac = -1; // rotation point will be on the right hand side of the robot
+        rotation_side = -1;  // rotation point will be on the right hand side of the robot
     }
 
-    float b = c * tan(front_steering) * b_fac;
-    float rotation_center_x = (wheel_base_ / 2) - c;
-    ROS_INFO_STREAM("b: " << b << " c: " << rotation_center_x);
+    float rotation_center_y = rotation_center_x * tan(front_steering) * rotation_side;
+    rotation_center_x = (wheel_base_ / 2) - rotation_center_x;
+    ROS_INFO_STREAM("x: " << rotation_center_x << " y: " << rotation_center_y);
 
     // Compute steering angles
     const double tan_front_steering = tan(curr_cmd_4ws.front_steering);
