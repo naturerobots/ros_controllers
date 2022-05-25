@@ -546,6 +546,25 @@ void FourWheelSteeringController::updateCommand(const ros::Time& time, const ros
       vel_left_rear *= vel / vel_sum;
       vel_right_rear *= vel / vel_sum;
 
+      float max_vel = std::max(std::max(vel_left_front, vel_right_front), std::max(vel_left_rear, vel_right_rear));
+      float min_vel = std::min(std::min(vel_left_front, vel_right_front), std::min(vel_left_rear, vel_right_rear));
+
+      if (max_vel > limiter_lin_.max_velocity / (M_2_PI * wheel_radius_))
+      {
+        vel_left_front *= (limiter_lin_.max_velocity / (M_2_PI * wheel_radius_)) / max_vel;
+        vel_right_front *= (limiter_lin_.max_velocity / (M_2_PI * wheel_radius_)) / max_vel;
+        vel_left_rear *= (limiter_lin_.max_velocity / (M_2_PI * wheel_radius_)) / max_vel;
+        vel_right_rear *= (limiter_lin_.max_velocity / (M_2_PI * wheel_radius_)) / max_vel;
+      }
+      
+      if (min_vel < limiter_lin_.min_velocity / (M_2_PI * wheel_radius_))
+      {
+        vel_left_front *= (limiter_lin_.min_velocity / (M_2_PI * wheel_radius_)) / min_vel;
+        vel_right_front *= (limiter_lin_.min_velocity / (M_2_PI * wheel_radius_)) / min_vel;
+        vel_left_rear *= (limiter_lin_.min_velocity / (M_2_PI * wheel_radius_)) / min_vel;
+        vel_right_rear *= (limiter_lin_.min_velocity / (M_2_PI * wheel_radius_)) / min_vel;
+      }
+
       // // Virutal front and rear wheelbase
       // // distance between the projection of the CIR on the wheelbase and the front axle
       // double l_front = 0;
