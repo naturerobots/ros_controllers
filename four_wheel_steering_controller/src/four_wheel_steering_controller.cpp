@@ -539,13 +539,12 @@ void FourWheelSteeringController::updateCommand(const ros::Time& time, const ros
 
       float vel_sum = vel_left_front + vel_right_front + vel_left_rear + vel_right_rear;
 
-      float vel = (curr_cmd_4ws.lin / (M_2_PI * wheel_radius_));
+      float vel = 4 * curr_cmd_4ws.lin / (M_2_PI * wheel_radius_);
 
       vel_left_front *= vel / vel_sum;
       vel_right_front *= vel / vel_sum;
       vel_left_rear *= vel / vel_sum;
       vel_right_rear *= vel / vel_sum;
-
 
       // // Virutal front and rear wheelbase
       // // distance between the projection of the CIR on the wheelbase and the front axle
@@ -588,8 +587,7 @@ void FourWheelSteeringController::updateCommand(const ros::Time& time, const ros
       //         wheel_radius_ +
       //     vel_steering_offset;
 
-
-      ROS_INFO_STREAM(vel_left_front + vel_right_front + vel_left_rear + vel_right_rear);
+      // ROS_INFO_STREAM(wheel_radius_ << " " << vel << " " << vel_left_front + vel_right_front + vel_left_rear + vel_right_rear);
     }
   }
 
