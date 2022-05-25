@@ -52,7 +52,9 @@ namespace four_wheel_steering_controller
     double min_acceleration,
     double max_acceleration,
     double min_jerk,
-    double max_jerk
+    double max_jerk,
+    double min_steering_angle,
+    double max_steering_angle
   )
   : has_velocity_limits(has_velocity_limits)
   , has_acceleration_limits(has_acceleration_limits)
@@ -63,6 +65,8 @@ namespace four_wheel_steering_controller
   , max_acceleration(max_acceleration)
   , min_jerk(min_jerk)
   , max_jerk(max_jerk)
+  , min_steering_angle(min_steering_angle)
+  , max_steering_angle(max_steering_angle)
   {
   }
 

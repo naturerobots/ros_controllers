@@ -148,6 +148,8 @@ bool FourWheelSteeringController::init(hardware_interface::RobotHW* robot_hw, ro
   controller_nh.param("linear/x/min_velocity", limiter_lin_.min_velocity, -limiter_lin_.max_velocity);
   controller_nh.param("linear/x/max_acceleration", limiter_lin_.max_acceleration, limiter_lin_.max_acceleration);
   controller_nh.param("linear/x/min_acceleration", limiter_lin_.min_acceleration, -limiter_lin_.max_acceleration);
+  controller_nh.param("linear/x/max_steering_angle", limiter_lin_.max_steering_angle, M_2_PI);
+  controller_nh.param("linear/x/min_steering_angle", limiter_lin_.min_steering_angle, -M_2_PI);
 
   controller_nh.param("angular/z/has_velocity_limits", limiter_ang_.has_velocity_limits,
                       limiter_ang_.has_velocity_limits);
@@ -157,6 +159,10 @@ bool FourWheelSteeringController::init(hardware_interface::RobotHW* robot_hw, ro
   controller_nh.param("angular/z/min_velocity", limiter_ang_.min_velocity, -limiter_ang_.max_velocity);
   controller_nh.param("angular/z/max_acceleration", limiter_ang_.max_acceleration, limiter_ang_.max_acceleration);
   controller_nh.param("angular/z/min_acceleration", limiter_ang_.min_acceleration, -limiter_ang_.max_acceleration);
+  controller_nh.param("angular/z/max_acceleration", limiter_ang_.max_acceleration, limiter_ang_.max_acceleration);
+  controller_nh.param("angular/z/min_acceleration", limiter_ang_.min_acceleration, -limiter_ang_.max_acceleration);
+  controller_nh.param("angular/z/max_steering_angle", limiter_ang_.max_steering_angle, M_2_PI);
+  controller_nh.param("angular/z/min_steering_angle", limiter_ang_.min_steering_angle, -M_2_PI);
 
   // If either parameter is not available, we need to look up the value in the URDF
   bool lookup_track = !controller_nh.getParam("track", track_);
@@ -455,6 +461,11 @@ void FourWheelSteeringController::updateCommand(const ros::Time& time, const ros
     float half_wheel_base = wheel_base_ / 2.0;
     float half_steering_track = steering_track / 2.0;
 
+    float front_left_sign = 1.0;
+    float front_right_sign = 1.0;
+    float rear_left_sign = 1.0;
+    float rear_right_sign = 1.0;
+
     // Compute steering angles
     if (fabs(curr_cmd_4ws.front_steering) + fabs(curr_cmd_4ws.rear_steering) > 0.001)
     {
@@ -462,56 +473,68 @@ void FourWheelSteeringController::updateCommand(const ros::Time& time, const ros
       if (rotation_center_x - 0.01 < half_wheel_base && rotation_center_y < half_steering_track &&
           rotation_center_y > 0.0)
         front_left_steering += M_PI;
+      
+      if (front_left_steering > limiter_ang_.max_steering_angle)
+      {
+        front_left_steering -= M_PI;
+        front_left_sign = -1.0;
+      }
+      else if (front_left_steering < limiter_ang_.min_steering_angle)
+      {
+        front_left_steering += M_PI;
+        front_left_sign = -1.0;
+      }
 
       front_right_steering = -atan((rotation_center_x - half_wheel_base) / (rotation_center_y + half_steering_track));
       if (rotation_center_x - 0.01 < half_wheel_base && rotation_center_y > -half_steering_track &&
           rotation_center_y < 0.0)
         front_right_steering -= M_PI;
 
+      if (front_right_steering > limiter_ang_.max_steering_angle)
+      {
+        front_right_steering -= M_PI;
+        front_right_sign = -1.0;
+      }
+      else if (front_right_steering < limiter_ang_.min_steering_angle)
+      {
+        front_right_steering += M_PI;
+        front_right_sign = -1.0;
+      }
+
       rear_left_steering = -atan((rotation_center_x + half_wheel_base) / (rotation_center_y - half_steering_track));
       if (rotation_center_x + 0.01 > -half_wheel_base && rotation_center_y < half_steering_track &&
           rotation_center_y > 0.0)
         rear_left_steering -= M_PI;
+      
+      if (rear_left_steering > limiter_ang_.max_steering_angle)
+      {
+        rear_left_steering -= M_PI;
+        rear_left_sign = -1.0;
+      }
+      else if (rear_left_steering < limiter_ang_.min_steering_angle)
+      {
+        rear_left_steering += M_PI;
+        rear_left_sign = -1.0;
+      }
 
       rear_right_steering = -atan((rotation_center_x + half_wheel_base) / (rotation_center_y + half_steering_track));
       if (rotation_center_x + 0.01 > -half_wheel_base && rotation_center_y > -half_steering_track &&
           rotation_center_y < 0.0)
         rear_right_steering += M_PI;
+      
+      if (rear_right_steering > limiter_ang_.max_steering_angle)
+      {
+        rear_right_steering -= M_PI;
+        rear_right_sign = -1.0;
+      }
+      else if (rear_right_steering < limiter_ang_.min_steering_angle)
+      {
+        rear_right_steering += M_PI;
+        rear_right_sign = -1.0;
+      }
+
+      ROS_INFO_STREAM(front_left_steering << " " << front_right_steering << " " << rear_left_steering << " " << rear_right_steering);
     }
-
-    const double tan_front_steering = tan(curr_cmd_4ws.front_steering);
-    const double tan_rear_steering = tan(curr_cmd_4ws.rear_steering);
-
-    const double steering_diff = steering_track * (tan_front_steering - tan_rear_steering) / 2.0;
-    // if (fabs(wheel_base_ - fabs(steering_diff)) > 0.001)
-    // {
-    //   front_left_steering = atan(wheel_base_ * tan_front_steering / (wheel_base_ - steering_diff));
-    //   front_right_steering = atan(wheel_base_ * tan_front_steering / (wheel_base_ + steering_diff));
-    //   rear_left_steering = atan(wheel_base_ * tan_rear_steering / (wheel_base_ - steering_diff));
-    //   rear_right_steering = atan(wheel_base_ * tan_rear_steering / (wheel_base_ + steering_diff));
-
-    //   if (tan_front_steering > 0 && wheel_base_ - steering_diff < 0)
-    //   {
-    //     // ROS_INFO_STREAM("fl_rot");
-    //     front_left_steering += M_PI;
-    //   }
-    //   if (tan_front_steering < 0 && wheel_base_ + steering_diff < 0)
-    //   {
-    //     // ROS_INFO_STREAM("fr_rot");
-    //     front_right_steering -= M_PI;
-    //   }
-
-    //   if (tan_rear_steering < 0 && wheel_base_ - steering_diff < 0)
-    //   {
-    //     // ROS_INFO_STREAM("rl_rot");
-    //     rear_left_steering -= M_PI;
-    //   }
-    //   if (tan_rear_steering > 0 && wheel_base_ + steering_diff < 0)
-    //   {
-    //     // ROS_INFO_STREAM("rr_rot");
-    //     rear_right_steering += M_PI;
-    //   }
-    // }
 
     // Compute wheels velocities:
     if (fabs(curr_cmd_4ws.lin) > 0.001)
@@ -532,10 +555,10 @@ void FourWheelSteeringController::updateCommand(const ros::Time& time, const ros
           sqrt((rotation_center_x + half_wheel_base) * (rotation_center_x + half_wheel_base) +
                (rotation_center_y + half_steering_track) * (rotation_center_y + half_steering_track));
 
-      vel_left_front = front_left_distance / robot_center_rot_radius;
-      vel_right_front = front_right_distance / robot_center_rot_radius;
-      vel_left_rear = rear_left_distance / robot_center_rot_radius;
-      vel_right_rear = rear_right_distance / robot_center_rot_radius;
+      vel_left_front = front_left_distance / robot_center_rot_radius * front_left_sign;
+      vel_right_front = front_right_distance / robot_center_rot_radius * front_right_sign;
+      vel_left_rear = rear_left_distance / robot_center_rot_radius * rear_left_sign;
+      vel_right_rear = rear_right_distance / robot_center_rot_radius * rear_right_sign;
 
       float vel_sum = vel_left_front + vel_right_front + vel_left_rear + vel_right_rear;
 
@@ -564,47 +587,6 @@ void FourWheelSteeringController::updateCommand(const ros::Time& time, const ros
         vel_left_rear *= (limiter_lin_.min_velocity / (M_2_PI * wheel_radius_)) / min_vel;
         vel_right_rear *= (limiter_lin_.min_velocity / (M_2_PI * wheel_radius_)) / min_vel;
       }
-
-      // // Virutal front and rear wheelbase
-      // // distance between the projection of the CIR on the wheelbase and the front axle
-      // double l_front = 0;
-      // if (fabs(tan(front_left_steering) - tan(front_right_steering)) > 0.01)
-      // {
-      //   l_front = tan(front_right_steering) * tan(front_left_steering) * steering_track /
-      //             (tan(front_left_steering) - tan(front_right_steering));
-      // }
-      // // distance between the projection of the CIR on the wheelbase and the rear axle
-      // double l_rear = 0;
-      // if (fabs(tan(rear_left_steering) - tan(rear_right_steering)) > 0.01)
-      // {
-      //   l_rear = tan(rear_right_steering) * tan(rear_left_steering) * steering_track /
-      //            (tan(rear_left_steering) - tan(rear_right_steering));
-      // }
-
-      // const double angular_speed_cmd = curr_cmd_4ws.lin * (tan_front_steering - tan_rear_steering) / wheel_base_;
-      // const double vel_steering_offset = (angular_speed_cmd * wheel_steering_y_offset_) / wheel_radius_;
-      // const double sign = copysign(1.0, curr_cmd_4ws.lin);
-
-      // vel_left_front =
-      //     sign *
-      //         std::hypot((curr_cmd_4ws.lin - angular_speed_cmd * steering_track / 2), (l_front * angular_speed_cmd))
-      //         / wheel_radius_ -
-      //     vel_steering_offset;
-      // vel_right_front =
-      //     sign *
-      //         std::hypot((curr_cmd_4ws.lin + angular_speed_cmd * steering_track / 2), (l_front * angular_speed_cmd))
-      //         / wheel_radius_ +
-      //     vel_steering_offset;
-      // vel_left_rear =
-      //     sign * std::hypot((curr_cmd_4ws.lin - angular_speed_cmd * steering_track / 2), (l_rear *
-      //     angular_speed_cmd)) /
-      //         wheel_radius_ -
-      //     vel_steering_offset;
-      // vel_right_rear =
-      //     sign * std::hypot((curr_cmd_4ws.lin + angular_speed_cmd * steering_track / 2), (l_rear *
-      //     angular_speed_cmd)) /
-      //         wheel_radius_ +
-      //     vel_steering_offset;
 
       // ROS_INFO_STREAM(wheel_radius_ << " " << vel << " " << vel_left_front + vel_right_front + vel_left_rear + vel_right_rear);
     }

@@ -38,6 +38,7 @@
 
 #pragma once
 
+#include <cmath>
 
 namespace four_wheel_steering_controller
 {
@@ -63,6 +64,8 @@ namespace four_wheel_steering_controller
      * \param [in] max_acceleration Maximum acceleration [m/s^2], usually >= 0
      * \param [in] min_jerk Minimum jerk [m/s^3], usually <= 0
      * \param [in] max_jerk Maximum jerk [m/s^3], usually >= 0
+     * \param [in] min_steering_angle Minimum steering angle [rad]
+     * \param [in] max_steering_angle Maximum steering angle [rad]
      */
     SpeedLimiter(
       bool has_velocity_limits = false,
@@ -73,7 +76,9 @@ namespace four_wheel_steering_controller
       double min_acceleration = 0.0,
       double max_acceleration = 0.0,
       double min_jerk = 0.0,
-      double max_jerk = 0.0
+      double max_jerk = 0.0,
+      double min_steering_angle = -M_PI,
+      double max_steering_angle = M_PI
     );
 
     /**
@@ -130,6 +135,10 @@ namespace four_wheel_steering_controller
     // Jerk limits:
     double min_jerk;
     double max_jerk;
+
+    // Steering angle limits:
+    double min_steering_angle;
+    double max_steering_angle;
   };
 
 } // namespace four_wheel_steering_controller
