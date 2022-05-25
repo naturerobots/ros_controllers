@@ -464,12 +464,12 @@ void FourWheelSteeringController::updateCommand(const ros::Time& time, const ros
         front_left_steering += M_PI;
 
       front_right_steering = -atan((rotation_center_x - half_wheel_base) / (rotation_center_y + half_steering_track));
-      if (rotation_center_x + 0.01 < half_wheel_base && rotation_center_y > -half_steering_track &&
+      if (rotation_center_x - 0.01 < half_wheel_base && rotation_center_y > -half_steering_track &&
           rotation_center_y < 0.0)
         front_right_steering -= M_PI;
 
       rear_left_steering = -atan((rotation_center_x + half_wheel_base) / (rotation_center_y - half_steering_track));
-      if (rotation_center_x - 0.01 > -half_wheel_base && rotation_center_y < half_steering_track &&
+      if (rotation_center_x + 0.01 > -half_wheel_base && rotation_center_y < half_steering_track &&
           rotation_center_y > 0.0)
         rear_left_steering -= M_PI;
 
